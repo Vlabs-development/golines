@@ -1,4 +1,4 @@
-package main
+package golines
 
 import (
 	"bufio"
@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"go/format"
 	"go/token"
+	"log/slog"
 	"os"
 	"os/exec"
 	"reflect"
@@ -14,7 +15,6 @@ import (
 
 	"github.com/dave/dst"
 	"github.com/dave/dst/decorator"
-	log "github.com/sirupsen/logrus"
 )
 
 var (
@@ -104,7 +104,7 @@ func (s *Shortener) Shorten(contents []byte) ([]byte, error) {
 	}
 
 	for {
-		log.Debugf("Starting round %d", round)
+		slog.Debug("Starting round", "round", round)
 
 		// Annotate all long lines
 		lines := strings.Split(string(contents), "\n")
@@ -124,7 +124,7 @@ func (s *Shortener) Shorten(contents []byte) ([]byte, error) {
 		}
 
 		if stop {
-			log.Debug("Nothing more to shorten or reformat, stopping")
+			slog.Debug("Nothing more to shorten or reformat, stopping")
 			break
 		}
 
@@ -143,7 +143,7 @@ func (s *Shortener) Shorten(contents []byte) ([]byte, error) {
 			}
 			defer dotFile.Close()
 
-			log.Debugf("Writing dot file output to %s", s.config.DotFile)
+			slog.Debug("Writing dot file output to path", "path", s.config.DotFile)
 			err = CreateDot(result, dotFile)
 			if err != nil {
 				return nil, err
@@ -166,7 +166,7 @@ func (s *Shortener) Shorten(contents []byte) ([]byte, error) {
 		round++
 
 		if round > maxRounds {
-			log.Debugf("Hit max rounds, stopping")
+			slog.Debug("Hit max rounds, stopping")
 			break
 		}
 	}
@@ -356,20 +356,20 @@ func (s *Shortener) isGoDirective(line string) bool {
 func (s *Shortener) formatNode(node dst.Node) {
 	switch n := node.(type) {
 	case dst.Decl:
-		log.Debugf("Processing declaration: %+v", n)
+		slog.Debug("Processing declaration", "declaration", n)
 		s.formatDecl(n)
 	case dst.Expr:
-		log.Debugf("Processing expression: %+v", n)
+		slog.Debug("Processing expression", "expression", n)
 		s.formatExpr(n, false, false)
 	case dst.Stmt:
-		log.Debugf("Processing statement: %+v", n)
+		slog.Debug("Processing statement", "statement", n)
 		s.formatStmt(n)
 	case dst.Spec:
-		log.Debugf("Processing spec: %+v", n)
+		slog.Debug("Processing spec", "spec", n)
 		s.formatSpec(n, false)
 	default:
-		log.Debugf(
-			"Got a node type that can't be shortened: %+v",
+		slog.Debug(
+			"Got a node type that can't be shortened", "type",
 			reflect.TypeOf(n),
 		)
 	}
@@ -391,8 +391,8 @@ func (s *Shortener) formatDecl(decl dst.Decl) {
 			s.formatSpec(spec, HasAnnotation(decl))
 		}
 	default:
-		log.Debugf(
-			"Got a declaration type that can't be shortened: %+v",
+		slog.Debug(
+			"Got a declaration type that can't be shortened", "type",
 			reflect.TypeOf(d),
 		)
 	}
@@ -471,8 +471,8 @@ func (s *Shortener) formatStmt(stmt dst.Stmt) {
 		s.formatStmt(st.Body)
 	default:
 		if shouldShorten {
-			log.Debugf(
-				"Got a statement type that can't be shortened: %+v",
+			slog.Debug(
+				"Got a statement type that can't be shortened", "type",
 				reflect.TypeOf(st),
 			)
 		}
@@ -563,8 +563,8 @@ func (s *Shortener) formatExpr(expr dst.Expr, force bool, isChain bool) {
 		s.formatExpr(e.X, shouldShorten, isChain)
 	default:
 		if shouldShorten {
-			log.Debugf(
-				"Got an expression type that can't be shortened: %+v",
+			slog.Debug(
+				"Got an expression type that can't be shortened", "type",
 				reflect.TypeOf(e),
 			)
 		}
@@ -583,8 +583,8 @@ func (s *Shortener) formatSpec(spec dst.Spec, force bool) {
 		s.formatExpr(sp.Type, false, false)
 	default:
 		if shouldShorten {
-			log.Debugf(
-				"Got a spec type that can't be shortened: %+v",
+			slog.Debug(
+				"Got a spec type that can't be shortened", "type",
 				reflect.TypeOf(sp),
 			)
 		}
